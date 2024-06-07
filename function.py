@@ -1,14 +1,34 @@
 import os
 import random
 import sys
-import webbrowser
-from PyQt5.QtGui import QIcon, QImage, QPixmap, QCursor
-from PyQt5.QtCore import Qt, QTimer, QPoint
+from PyQt5.QtGui import QIcon, QImage, QPixmap, QCursor, QFont
+from PyQt5.QtCore import Qt, QTimer, QPoint, QUrl
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLabel, QAction, QMenu,
-    QSystemTrayIcon, QDesktopWidget, QMessageBox
+    QSystemTrayIcon, QDesktopWidget, QVBoxLayout
 )
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 import config as cfg
+
+
+class CustomDialog(QWidget):
+    def __init__(self, parent=None):
+        super(CustomDialog, self).__init__(parent)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.SubWindow)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+
+        layout = QVBoxLayout()
+        self.label = QLabel("你好，今天要做些什么？", self)
+        self.label.setFont(QFont('Arial', 10))
+        self.label.setStyleSheet("color: orange; background-color: black; border: 2px solid orange; padding: 10px;")
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+    def showDialog(self, message):
+        self.label.setText(message)
+        self.adjustSize()
+        self.show()
+
 
 
 class DesktopPet(QWidget):
@@ -47,6 +67,9 @@ class DesktopPet(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.randomAct)
         self.timer.start(200)
+
+        self.player = QMediaPlayer()  # 初始化 QMediaPlayer
+        self.dialog = CustomDialog(self)  # 初始化自定义对话框
 
     def randomAct(self):
         if not self.is_running_action:
@@ -87,6 +110,7 @@ class DesktopPet(QWidget):
             self.setCursor(QCursor(Qt.OpenHandCursor))
         elif event.button() == Qt.RightButton:
             self.showDialog()
+            self.playSound()
 
     def mouseMoveEvent(self, event):
         if Qt.LeftButton and self.is_follow_mouse:
@@ -110,15 +134,18 @@ class DesktopPet(QWidget):
         self.move(int(width), int(height))
 
     def showDialog(self):
-        msg = QMessageBox(self)
-        msg.setWindowTitle("桌面宠物")
-        msg.setText("早上好")
-        msg.setInformativeText("今天想做什么？")
-        msg.setStandardButtons(QMessageBox.Ok)
-        msg.setIcon(QMessageBox.Information)
-        msg.exec_()
+        self.dialog.showDialog("你好，今天要做些什么？")
+
+    def playSound(self):
+        sound_path = os.path.join(cfg.ROOT_DIR, 'voice', 'Ciallo', 'こんにちは、私の名前は夏目藍です.wav')
+        if os.path.exists(sound_path):
+            url = QUrl.fromLocalFile(sound_path)
+            content = QMediaContent(url)
+            self.player.setMedia(content)
+            self.player.play()
+        else:
+            print(f"Sound file not found: {sound_path}")
 
     def quit(self):
         self.close()
         QApplication.quit()
-
