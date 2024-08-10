@@ -22,7 +22,7 @@ def connect_to_db():
     connection = mysql.connector.connect(
         host='localhost',
         user='root',  # 确保使用正确的用户名
-        password='password',  # 确保使用正确的密码
+        password='000000',  # 确保使用正确的密码
         database='natusme'
     )
     return connection
