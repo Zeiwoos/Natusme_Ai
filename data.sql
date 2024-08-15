@@ -9,7 +9,7 @@ CREATE TABLE users (
                         level                INT DEFAULT 1,
                         exp                  INT DEFAULT 0,
 
-                        email                VARCHAR(100) UNIQUE NOT NULL,
+#                         email                VARCHAR(100) UNIQUE NOT NULL,
                         avatar               TEXT,
                         create_time          DATETIME ,
                         last_login_time      DATETIME DEFAULT NULL,
