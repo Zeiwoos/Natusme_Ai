@@ -64,6 +64,11 @@ class SettingsWindow(QWidget):
         self.button_logout.setFixedSize(100, 30)
         self.layout.addWidget(self.button_logout)
 
+    def closeEvent(self, event):
+        # 当设置窗口关闭时，仅隐藏窗口而不退出桌宠
+        self.hide()
+        event.ignore()  # 忽略默认的关闭事件
+
 
 class DesktopPet(QWidget):
     def __init__(self, parent=None, **kwargs):
@@ -226,7 +231,7 @@ class DesktopPet(QWidget):
         self.dialog.move(self.x(), self.y() - self.dialog.height() - 10)
 
     def showDialogInput(self):
-        # self.settings_window.hide()  # 隐藏设置窗口
+        self.settings_window.hide()  # 隐藏设置窗口
         self.input_message.setPlaceholderText('请输入对话内容')
         self.safeDisconnect(self.input_message.returnPressed)
         self.input_message.returnPressed.connect(self.submitMessage)
