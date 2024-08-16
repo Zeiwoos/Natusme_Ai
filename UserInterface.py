@@ -3,6 +3,7 @@ import mysql.connector
 import random
 import subprocess
 import json
+import requests
 from PyQt5.QtGui import QIcon, QImage, QPixmap, QCursor
 from PyQt5.QtCore import Qt, QTimer, QPoint, QUrl
 from PyQt5.QtWidgets import (
@@ -13,7 +14,7 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 import config as cfg
 from function import loadImage, randomPosition, connect_to_db
 from dialog import CustomDialog
-
+import weather
 
 class SettingsWindow(QWidget):
     def __init__(self, desktop_pet):
@@ -30,13 +31,11 @@ class SettingsWindow(QWidget):
         self.updateUI()
 
     def updateUI(self):
-        # 清空布局中的所有小部件
         for i in reversed(range(self.layout.count())):
             widget = self.layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
-        # 根据登录状态更新界面
         if self.desktop_pet.is_logged_in:
             self.showLoggedInOptions()
         else:
@@ -44,31 +43,39 @@ class SettingsWindow(QWidget):
 
     def showLoggedOutOptions(self):
         self.button_register = QPushButton('注册', self)
-        self.button_register.clicked.connect(self.desktop_pet.showRegisterDialog)
         self.button_register.setFixedSize(100, 30)
+        self.button_register.setStyleSheet("background-color: #00FFFF; color: black;")
+        self.button_register.clicked.connect(self.desktop_pet.showRegisterDialog)
         self.layout.addWidget(self.button_register)
 
         self.button_login = QPushButton('登录', self)
-        self.button_login.clicked.connect(self.desktop_pet.showLoginDialog)
         self.button_login.setFixedSize(100, 30)
+        self.button_login.setStyleSheet("background-color: #00FFFF; color: black;")
+        self.button_login.clicked.connect(self.desktop_pet.showLoginDialog)
         self.layout.addWidget(self.button_login)
 
     def showLoggedInOptions(self):
         self.button_sign_in = QPushButton('签到', self)
-        self.button_sign_in.clicked.connect(self.desktop_pet.signIn)
         self.button_sign_in.setFixedSize(100, 30)
+        self.button_sign_in.setStyleSheet("background-color: #00FFFF; color: black;")
+        self.button_sign_in.clicked.connect(self.desktop_pet.signIn)
         self.layout.addWidget(self.button_sign_in)
 
+        self.button_weather = QPushButton('查询天气', self)
+        self.button_weather.setFixedSize(100, 30)
+        self.button_weather.setStyleSheet("background-color: #00FFFF; color: black;")
+        self.button_weather.clicked.connect(self.desktop_pet.queryWeather)
+        self.layout.addWidget(self.button_weather)
+
         self.button_logout = QPushButton('登出', self)
-        self.button_logout.clicked.connect(self.desktop_pet.logout)
         self.button_logout.setFixedSize(100, 30)
+        self.button_logout.setStyleSheet("background-color: pink; color: red;")
+        self.button_logout.clicked.connect(self.desktop_pet.logout)
         self.layout.addWidget(self.button_logout)
 
     def closeEvent(self, event):
-        # 当设置窗口关闭时，仅隐藏窗口而不退出桌宠
         self.hide()
-        event.ignore()  # 忽略默认的关闭事件
-
+        event.ignore()
 
 class DesktopPet(QWidget):
     def __init__(self, parent=None, **kwargs):
@@ -117,44 +124,40 @@ class DesktopPet(QWidget):
 
     def initUI(self):
         self.layout = QVBoxLayout(self)
-
-        # Add pet image label
         self.layout.addWidget(self.image)
 
-        # 初始化输入框组件
         self.input_message = QLineEdit(self)
         self.input_message.setFixedSize(150, 30)
-        self.input_message.hide()  # 初始时隐藏
+        self.input_message.hide()
 
         self.input_password = QLineEdit(self)
         self.input_password.setEchoMode(QLineEdit.Password)
         self.input_password.setFixedSize(150, 30)
-        self.input_password.hide()  # 初始时隐藏
+        self.input_password.hide()
 
         self.layout.addWidget(self.input_message)
         self.layout.addWidget(self.input_password)
 
-        # 添加功能按钮
         self.button_talk = QPushButton('对话', self)
         self.button_talk.clicked.connect(self.showDialogInput)
         self.button_talk.setFixedSize(80, 30)
-        self.button_talk.hide()  # 初始时隐藏
+        self.button_talk.setStyleSheet("background-color: #00FFFF; color: black;")
+        self.button_talk.hide()
 
         self.button_settings = QPushButton('设置', self)
         self.button_settings.clicked.connect(self.openSettings)
         self.button_settings.setFixedSize(80, 30)
+        self.button_settings.setStyleSheet("background-color: #00FFFF; color: black;")
 
-        # 设置按钮布局
         button_layout = QHBoxLayout()
-        button_layout.addStretch(1)  # 左侧填充
+        button_layout.addStretch(1)
         button_layout.addWidget(self.button_talk)
         button_layout.addWidget(self.button_settings)
-        button_layout.addStretch(1)  # 右侧填充
+        button_layout.addStretch(1)
 
         self.layout.addLayout(button_layout)
         self.setLayout(self.layout)
 
-        # 初始化时只显示设置按钮
         if self.is_logged_in:
             self.showLoggedInButtons()
         else:
@@ -171,7 +174,7 @@ class DesktopPet(QWidget):
     def openSettings(self):
         if not self.settings_window:
             self.settings_window = SettingsWindow(self)
-        self.settings_window.updateUI()  # 根据登录状态更新设置界面
+        self.settings_window.updateUI()
         self.settings_window.show()
 
     def randomAct(self):
@@ -231,7 +234,6 @@ class DesktopPet(QWidget):
         self.dialog.move(self.x(), self.y() - self.dialog.height() - 10)
 
     def showDialogInput(self):
-        self.settings_window.hide()  # 隐藏设置窗口
         self.input_message.setPlaceholderText('请输入对话内容')
         self.safeDisconnect(self.input_message.returnPressed)
         self.input_message.returnPressed.connect(self.submitMessage)
@@ -246,7 +248,7 @@ class DesktopPet(QWidget):
         self.input_message.clear()
 
     def showRegisterDialog(self):
-        self.settings_window.hide()  # 隐藏设置窗口
+        self.settings_window.hide()
         self.input_message.setPlaceholderText('请输入注册用户名')
         self.input_password.setPlaceholderText('请输入注册密码')
         self.input_message.show()
@@ -270,14 +272,14 @@ class DesktopPet(QWidget):
                 self.dialog.showDialog("用户名已存在，请重试。", timeout=3000)
                 self.input_message.clear()
                 self.input_password.clear()
-                self.showRegisterDialog()  # 重新显示注册界面
+                self.showRegisterDialog()
             else:
                 cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password))
                 conn.commit()
                 print("注册成功。")
                 self.dialog.showDialog("注册成功，请登录。", timeout=3000)
-                self.clearInputFields()  # 注册成功后清空输入栏
-                self.showLoginDialog()  # 注册成功后跳转到登录界面
+                self.clearInputFields()
+                self.showLoginDialog()
             cursor.close()
             conn.close()
         except mysql.connector.Error as err:
@@ -285,7 +287,7 @@ class DesktopPet(QWidget):
             self.dialog.showDialog(f"连接错误: {err}", timeout=3000)
 
     def showLoginDialog(self):
-        self.settings_window.hide()  # 隐藏设置窗口
+        self.settings_window.hide()
         self.input_message.setPlaceholderText('请输入用户名')
         self.input_password.setPlaceholderText('请输入密码')
         self.input_password.setEchoMode(QLineEdit.Password)
@@ -315,7 +317,7 @@ class DesktopPet(QWidget):
                 self.save_login_status(username)  # 保存登录状态
                 self.dialog.showDialog("登录成功！", timeout=3000)
                 self.showLoggedInButtons()
-                self.openSettings()  # 登录成功后打开设置窗口
+                self.openSettings()
             else:
                 print("登录失败。")
                 self.dialog.showDialog("登录失败，请重试。", timeout=3000)
@@ -332,7 +334,7 @@ class DesktopPet(QWidget):
         self.clear_login_status()
         self.dialog.showDialog("已退出登录。", timeout=3000)
         if self.settings_window:
-            self.settings_window.hide()  # 退出登录时隐藏设置窗口
+            self.settings_window.hide()
         self.showLoggedOutButtons()
 
     def clearInputFields(self):
@@ -342,9 +344,34 @@ class DesktopPet(QWidget):
         self.input_password.clear()
 
     def signIn(self):
-        self.settings_window.hide()  # 隐藏设置窗口
+        self.settings_window.hide()
         print("签到功能已调用。")
         os.system('start cmd.exe /K sign_in.bat')
+
+    def queryWeather(self):
+        # 显示输入框让用户输入城市名称
+        self.input_message.setPlaceholderText('请输入城市名')
+        try:
+            self.input_message.returnPressed.disconnect()  # 尝试断开所有连接
+        except TypeError:
+            pass  # 如果没有连接，不进行任何处理
+        self.input_message.returnPressed.connect(self.fetchWeather)  # 连接到查询天气的函数
+        self.input_message.show()
+        self.input_message.setFocus()
+
+    def fetchWeather(self):
+        try:
+            city = self.input_message.text()
+            if not city:
+                raise ValueError("城市名不能为空")
+            print("天气已查询")
+            weather_info = weather.get_weather(city)
+            self.dialog.showDialog(weather_info, timeout=5000)
+        except Exception as e:
+            error_message = f"查询天气时发生错误: {str(e)}"
+            self.dialog.showDialog(error_message, timeout=5000)
+        finally:
+            self.clearInputFields()  # 查询完后清除输入框并恢复按钮
 
     def quit(self):
         self.close()
@@ -364,15 +391,13 @@ class DesktopPet(QWidget):
         try:
             signal.disconnect()
         except TypeError:
-            pass  # 如果信号没有连接，则忽略断开连接的操作
+            pass
 
     def save_login_status(self, username):
-        # 将登录状态保存到本地文件
         with open("login_status.json", "w") as f:
             json.dump({"username": username}, f)
 
     def load_login_status(self):
-        # 从本地文件加载登录状态
         if os.path.exists("login_status.json"):
             with open("login_status.json", "r") as f:
                 data = json.load(f)
@@ -380,6 +405,6 @@ class DesktopPet(QWidget):
                     self.is_logged_in = True
 
     def clear_login_status(self):
-        # 清除本地的登录状态文件
         if os.path.exists("login_status.json"):
             os.remove("login_status.json")
+
