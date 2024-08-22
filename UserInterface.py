@@ -11,6 +11,8 @@ from PyQt5.QtWidgets import (
     QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QApplication, QLineEdit
 )
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+
+import chatgpt
 import config as cfg
 from function import loadImage, randomPosition, connect_to_db
 from dialog import CustomDialog
@@ -26,7 +28,6 @@ class SettingsWindow(QWidget):
         self.setWindowTitle("设置")
         self.setGeometry(300, 300, 300, 200)
         self.layout = QVBoxLayout(self)
-
         self.setLayout(self.layout)
         self.updateUI()
 
@@ -223,27 +224,29 @@ class DesktopPet(QWidget):
         if Qt.LeftButton and self.is_follow_mouse:
             self.move(event.globalPos() - self.mouse_drag_pos)
             event.accept()
-            self.dialog.move(self.x(), self.y() - self.dialog.height() - 10)
+            # 调整对话框位置到桌宠左上方
+            self.dialog.move(self.x() - self.dialog.width(), self.y() - self.dialog.height())
 
     def mouseReleaseEvent(self, event):
         self.is_follow_mouse = False
         self.setCursor(QCursor(Qt.ArrowCursor))
 
     def showDialog(self):
-        self.dialog.showDialog("你好，今天要做些什么？", timeout=3000)
-        self.dialog.move(self.x(), self.y() - self.dialog.height() - 10)
+        # 设置对话框在桌宠左上方（右侧对齐桌宠左侧）
+        self.dialog.move(self.x() - self.dialog.width(), self.y() - self.dialog.height())
+        self.dialog.showDialog("你好，今天要做些什么？", timeout=30000)  # 持续时间 30 秒
 
     def showDialogInput(self):
         self.input_message.setPlaceholderText('请输入对话内容')
         self.safeDisconnect(self.input_message.returnPressed)
-        self.input_message.returnPressed.connect(self.submitMessage)
+        self.input_message.returnPressed.connect(self.fetchResponce)
         self.input_message.show()
         self.input_message.setFocus()
 
     def submitMessage(self):
         message = self.input_message.text()
-        self.dialog.showDialog(message, timeout=3000)
-        self.dialog.move(self.x(), self.y() - self.dialog.height() - 10)
+        self.dialog.showDialog(message, timeout=30000)  # 持续时间 30 秒
+        self.dialog.move(self.x() - self.dialog.width(), self.y() - self.dialog.height())  # 对话框位置调整
         self.input_message.hide()
         self.input_message.clear()
 
@@ -269,7 +272,7 @@ class DesktopPet(QWidget):
             cursor.execute("SELECT * FROM users WHERE username=%s", (username,))
             if cursor.fetchone():
                 print("用户名已存在。")
-                self.dialog.showDialog("用户名已存在，请重试。", timeout=3000)
+                self.dialog.showDialog("用户名已存在，请重试。", timeout=30000)
                 self.input_message.clear()
                 self.input_password.clear()
                 self.showRegisterDialog()
@@ -277,14 +280,14 @@ class DesktopPet(QWidget):
                 cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password))
                 conn.commit()
                 print("注册成功。")
-                self.dialog.showDialog("注册成功，请登录。", timeout=3000)
+                self.dialog.showDialog("注册成功，请登录。", timeout=30000)
                 self.clearInputFields()
                 self.showLoginDialog()
             cursor.close()
             conn.close()
         except mysql.connector.Error as err:
             print(f"连接错误: {err}")
-            self.dialog.showDialog(f"连接错误: {err}", timeout=3000)
+            self.dialog.showDialog(f"连接错误: {err}", timeout=30000)
 
     def showLoginDialog(self):
         self.settings_window.hide()
@@ -315,24 +318,24 @@ class DesktopPet(QWidget):
                 print("登录成功。")
                 self.is_logged_in = True  # 标记用户已登录
                 self.save_login_status(username)  # 保存登录状态
-                self.dialog.showDialog("登录成功！", timeout=3000)
+                self.dialog.showDialog("登录成功！", timeout=30000)
                 self.showLoggedInButtons()
                 self.openSettings()
             else:
                 print("登录失败。")
-                self.dialog.showDialog("登录失败，请重试。", timeout=3000)
+                self.dialog.showDialog("登录失败，请重试。", timeout=30000)
             cursor.close()
             conn.close()
         except mysql.connector.Error as err:
             print(f"连接错误: {err}")
-            self.dialog.showDialog(f"连接错误: {err}", timeout=3000)
+            self.dialog.showDialog(f"连接错误: {err}", timeout=30000)
 
         self.clearInputFields()
 
     def logout(self):
         self.is_logged_in = False
         self.clear_login_status()
-        self.dialog.showDialog("已退出登录。", timeout=3000)
+        self.dialog.showDialog("已退出登录。", timeout=30000)
         if self.settings_window:
             self.settings_window.hide()
         self.showLoggedOutButtons()
@@ -364,7 +367,7 @@ class DesktopPet(QWidget):
             city = self.input_message.text()
             if not city:
                 raise ValueError("城市名不能为空")
-            print("天气已查询")
+            # print("天气已查询")
             weather_info = weather.get_weather(city)
             self.dialog.showDialog(weather_info, timeout=5000)
         except Exception as e:
@@ -372,6 +375,24 @@ class DesktopPet(QWidget):
             self.dialog.showDialog(error_message, timeout=5000)
         finally:
             self.clearInputFields()  # 查询完后清除输入框并恢复按钮
+
+    def fetchResponce(self):
+        try:
+            message = self.input_message.text()
+            if not message:
+                raise ValueError("输入内容不能为空")
+
+            response_info = chatgpt.get_response(message)
+
+            formatted_response = '\n'.join(response_info[i:i + 15] for i in range(0, len(response_info), 15))
+
+            self.dialog.showDialog(formatted_response, timeout=30000)  # 持续时间 30 秒
+
+        except Exception as e:
+            error_message = f"未知错误发生: {str(e)}"
+            self.dialog.showDialog(error_message, timeout=30000)
+        finally:
+            self.clearInputFields()
 
     def quit(self):
         self.close()
@@ -408,3 +429,7 @@ class DesktopPet(QWidget):
         if os.path.exists("login_status.json"):
             os.remove("login_status.json")
 
+
+#BUG:退出登录再登录再退出登录再注册账号会导致重名失败
+#BUG:偶现一次注册后在数据库中创造两个相同账号（此时注册失败则报错两次用户名已存在）
+#BUG:刚打开程序时对话框无法跟随桌宠，必须拖动桌宠进行刷新。
