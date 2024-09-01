@@ -1,7 +1,7 @@
 import requests
 
 # 天气API相关配置
-API_KEY = '105484b2036786d8a43149e287f9ca40'
+API_KEY = 'qqq'
 BASE_URL = 'https://restapi.amap.com/v3/weather/weatherInfo?'
 
 def get_weather(city):
@@ -23,8 +23,3 @@ def get_weather(city):
     else:
         return "无法获取天气信息"
 
-if __name__ == '__main__':
-    print(get_weather('洪山区'))
-#信丰县360722
-#北京市110000
-#武汉市 420100   洪山区 420111
