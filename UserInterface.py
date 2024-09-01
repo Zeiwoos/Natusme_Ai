@@ -17,6 +17,9 @@ import config as cfg
 from function import loadImage, randomPosition, connect_to_db
 from dialog import CustomDialog
 import weather
+# from SoVITS import api2
+import Voice
+import translate
 
 class SettingsWindow(QWidget):
     def __init__(self, desktop_pet):
@@ -211,6 +214,7 @@ class DesktopPet(QWidget):
         return pet_images, iconpath
 
     def mousePressEvent(self, event):
+        hello_voice_path = "resources/voice/Ciallo/こんにちは、私の名前は夏目藍です.wav"
         if event.button() == Qt.LeftButton:
             self.is_follow_mouse = True
             self.mouse_drag_pos = event.globalPos() - self.pos()
@@ -218,7 +222,7 @@ class DesktopPet(QWidget):
             self.setCursor(QCursor(Qt.OpenHandCursor))
         elif event.button() == Qt.RightButton:
             self.showDialog()
-            self.playSound()
+            self.playSound(hello_voice_path)
 
     def mouseMoveEvent(self, event):
         if Qt.LeftButton and self.is_follow_mouse:
@@ -370,11 +374,16 @@ class DesktopPet(QWidget):
             # print("天气已查询")
             weather_info = weather.get_weather(city)
             self.dialog.showDialog(weather_info, timeout=5000)
+            processed_weather_info = translate.Start(weather_info, "jp")
+            print(processed_weather_info)
+            weather_voice_path = Voice.getVoice(processed_weather_info)
+            self.playSound(weather_voice_path)
         except Exception as e:
             error_message = f"查询天气时发生错误: {str(e)}"
             self.dialog.showDialog(error_message, timeout=5000)
         finally:
             self.clearInputFields()  # 查询完后清除输入框并恢复按钮
+
 
     def fetchResponce(self):
         try:
@@ -398,8 +407,8 @@ class DesktopPet(QWidget):
         self.close()
         QApplication.quit()
 
-    def playSound(self):
-        sound_path = os.path.join(cfg.ROOT_DIR, 'voice', 'Ciallo', 'こんにちは、私の名前は夏目藍です.wav')
+    def playSound(self,path):
+        sound_path = os.path.join(path)
         if os.path.exists(sound_path):
             url = QUrl.fromLocalFile(sound_path)
             content = QMediaContent(url)
@@ -430,6 +439,3 @@ class DesktopPet(QWidget):
             os.remove("login_status.json")
 
 
-#BUG:退出登录再登录再退出登录再注册账号会导致重名失败
-#BUG:偶现一次注册后在数据库中创造两个相同账号（此时注册失败则报错两次用户名已存在）
-#BUG:刚打开程序时对话框无法跟随桌宠，必须拖动桌宠进行刷新。
